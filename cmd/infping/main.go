@@ -37,12 +37,13 @@ func slashSplitter(c rune) bool {
 func readPoints(config *toml.Tree, con *client.Client) {
     args := []string{"-B 1", "-D", "-r0", "-O 0", "-Q 10", "-p 1000", "-l"}
     hosts := config.Get("hosts.hosts").([]interface{})
+    fping_exec := config.Get("fping.path").(string)
     for _, v := range hosts {
         host, _ := v.(string)
         args = append(args, host)
     }
     log.Printf("Going to ping the following hosts: %q", hosts)
-    cmd := exec.Command("/usr/bin/fping", args...)
+    cmd := exec.Command(fping_exec, args...)
     stdout, err := cmd.StdoutPipe()
     herr(err)
     stderr, err := cmd.StderrPipe()
@@ -100,7 +101,7 @@ func writePoints(config *toml.Tree, con *client.Client, host string, sent string
         }
     }
     pts[0] = client.Point{
-        Measurement: "ping",
+        Measurement: config.Get("influxdb.measurement").(string),
         Tags: map[string]string{
             "host": host,
         },
@@ -112,7 +113,7 @@ func writePoints(config *toml.Tree, con *client.Client, host string, sent string
     bps := client.BatchPoints{
         Points:          pts,
         Database:        db,
-        RetentionPolicy: "default",
+        RetentionPolicy: "autogen",
     }
     _, err := con.Write(bps)
     if err != nil {
@@ -127,13 +128,11 @@ func main() {
         os.Exit(1)
     }
 
-    host := config.Get("influxdb.host").(string)
-    port := config.Get("influxdb.port").(string)
-    //measurement := config.Get("influxdb.measurement").(string)
+    influxdb_url := config.Get("influxdb.url").(string)
     username := config.Get("influxdb.user").(string)
     password := config.Get("influxdb.pass").(string)
 
-    u, err := url.Parse(fmt.Sprintf("http://%s:%s", host, port))
+    u, err := url.Parse(influxdb_url)
     if err != nil {
         log.Fatal(err)
     }
