@@ -35,7 +35,7 @@ func slashSplitter(c rune) bool {
 	return c == '/'
 }
 
-func pingV4Hosts(config *toml.Tree, con *client.Client) {
+func pingV4Hosts(r chan int, config *toml.Tree, con *client.Client) {
 	args := []string{"-4", "-B 1", "-D", "-r0", "-O 0", "-Q 10", "-l"}
 	hosts := config.Get("hosts.v4hosts").([]interface{})
 	for _, v := range hosts {
@@ -43,9 +43,10 @@ func pingV4Hosts(config *toml.Tree, con *client.Client) {
 		args = append(args, host)
 	}
 	readPoints(hosts, args, config, con)
+	r <- 1
 }
 
-func pingV6Hosts(config *toml.Tree, con *client.Client) {
+func pingV6Hosts(r chan int, config *toml.Tree, con *client.Client) {
 	args := []string{"-6", "-B 1", "-D", "-r0", "-O 0", "-Q 10", "-l"}
 	hosts := config.Get("hosts.v6hosts").([]interface{})
 	for _, v := range hosts {
@@ -53,6 +54,7 @@ func pingV6Hosts(config *toml.Tree, con *client.Client) {
 		args = append(args, host)
 	}
 	readPoints(hosts, args, config, con)
+	r <- 1
 }
 
 // func readPoints(config *toml.Tree, con *client.Client) {
@@ -178,9 +180,12 @@ func main() {
 	}
 	log.Printf("Connected to influxdb! %v, %s", dur, ver)
 
-	// readPoints(config, con)
-	go pingV4Hosts(config, con)
-	go pingV6Hosts(config, con)
+	r := make(chan int)
 
-	fmt.Println()
+	// readPoints(config, con)
+	go pingV4Hosts(r, config, con)
+	go pingV6Hosts(r, config, con)
+
+	res := <-r
+	fmt.Printf("Exited with %i.\n", res)
 }
