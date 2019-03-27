@@ -12,8 +12,12 @@ path = "/usr/bin/fping"
 
 [hosts]
 
-hosts = [
+v4hosts = [
     "127.0.0.1",
     "8.8.8.8",
+]
+
+v6hosts = [
+    "2600::"
 ]
 
